@@ -1,5 +1,5 @@
 const { Telegraf } = require('telegraf');
-const bot = new Telegraf('YOUR_BOT_TOKEN_HERE'); // Replace with your @BotFather token
+const bot = new Telegraf('8240124207:AAEmzi-0po3Nwk31fgqEbRxRTllkIUuDvOQE'); // Replace with your @BotFather token
 
 // Simple in-memory game state (for demo; use Supabase later)
 let game = null;
