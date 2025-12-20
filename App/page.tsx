@@ -1,3 +1,5 @@
+import NeonButton from '@/components/NeonButton';
+
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center text-center px-8 bg-background">
@@ -10,16 +12,16 @@ export default function Home() {
       <p className="text-xl md:text-2xl mb-16 text-neon-green max-w-2xl">
         Fast group chat bingo • Variable row payouts • Neon vibes • Free to play
       </p>
-      <div className="space-x-6">
-        <button className="px-10 py-5 bg-neon-purple rounded-xl text-2xl font-bold hover:scale-110 transition-transform shadow-lg">
+      <div className="space-x-8">
+        <NeonButton className="bg-neon-purple">
           Host Game
-        </button>
-        <button className="px-10 py-5 bg-neon-green rounded-xl text-2xl font-bold hover:scale-110 transition-transform shadow-lg">
+        </NeonButton>
+        <NeonButton className="bg-neon-green">
           Join Group
-        </button>
+        </NeonButton>
       </div>
       <p className="mt-20 text-neon-cyan opacity-70 text-lg">
-        Telegram bot coming soon — crypto tips optional
+        Telegram bot integration coming soon — crypto tips optional
       </p>
     </main>
   );
