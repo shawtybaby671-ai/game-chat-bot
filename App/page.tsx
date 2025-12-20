@@ -1,4 +1,5 @@
 import NeonButton from '@/components/NeonButton';
+import LuckyLinesFlashboard from '@/components/LuckyLinesFlashboard';
 
 export default function Home() {
   return (
@@ -12,7 +13,7 @@ export default function Home() {
       <p className="text-xl md:text-2xl mb-16 text-neon-green max-w-2xl">
         Fast group chat bingo • Variable row payouts • Neon vibes • Free to play
       </p>
-      <div className="space-x-8">
+      <div className="space-x-8 mb-20">
         <NeonButton className="bg-neon-purple">
           Host Game
         </NeonButton>
@@ -20,6 +21,10 @@ export default function Home() {
           Join Group
         </NeonButton>
       </div>
+
+      {/* Flashboard Preview */}
+      <LuckyLinesFlashboard />
+      
       <p className="mt-20 text-neon-cyan opacity-70 text-lg">
         Telegram bot integration coming soon — crypto tips optional
       </p>
