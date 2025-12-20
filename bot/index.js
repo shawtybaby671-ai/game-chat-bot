@@ -1,42 +1,67 @@
-const { Telegraf } = require('telegraf');
-const bot = new Telegraf('8240124207:AAEmzi-0po3Nwk31fgqEbRxRTllkIUuDvOQE'); // Replace with your @BotFather token
+const { Telegraf, Markup } = require('telegraf');
+const bot = new Telegraf('8133840763:AAGJIqn-TZZ8TrbTzbwF8NiyEGRPr22JxUs'); // Your token
 
-// Simple in-memory game state (for demo; use Supabase later)
 let game = null;
+let pollMessage = null;
 
-// Example 15 rows with variable costs/payouts
-const ROWS = Array.from({ length: 15 }, (_, i) => ({
-  id: i + 1,
-  name: i < 3 ? 'Cheap Thrill' : i < 7 ? 'Standard' : i < 10 ? 'High Roller' : i < 13 ? 'Moonshot' : i === 13 ? 'Golden Row' : 'Free Row',
-  cost: i < 3 ? 'Free / 0.5 USDT' : i < 7 ? '1.0 USDT' : i < 10 ? '2.0 USDT' : i < 13 ? '3.0 USDT' : i === 13 ? '5.0 USDT' : 'Free',
-  payout: i < 3 ? '1.5x' : i < 7 ? '3x' : i < 10 ? '8x' : i < 13 ? '15x' : i === 13 ? '25x + Jackpot' : 'Shared 1x',
-  numbers: Array.from({ length: 5 }, () => Math.floor(Math.random() * 75) + 1).sort((a, b) => a - b),
-  owner: null,
-}));
+const STYLES = {
+  low: { minCost: 1, maxCost: 2, minPayout: 15, maxPayout: 25 },
+  medium: { minCost: 3, maxCost: 10, minPayout: 30, maxPayout: 100 },
+  high: { minCost: 10, maxCost: 20, minPayout: 100, maxPayout: 200 },
+  juiced: { minCost: 1, maxCost: 20, minPayout: 20, maxPayout: 200 },
+};
 
-bot.start((ctx) => ctx.reply('Welcome to DegenFamous Bingo! Use /newgame to start Lucky Lines.'));
+function generateBoard(style) {
+  const { minCost, maxCost, minPayout, maxPayout } = STYLES[style];
+  const rows = [];
+  let totalCost = 0;
+  for (let i = 1; i <= 15; i++) {
+    const cost = Math.floor(Math.random() * (maxCost - minCost + 1)) + minCost;
+    let payout = Math.floor(cost * (9 + Math.random() * 6)); // 9–15x base
+    payout = Math.min(payout, maxPayout);
+    rows.push({ id: i, cost, payout });
+    totalCost += cost;
+  }
+  // Cap max payout to totalCost - 1
+  const maxAllowed = totalCost - 1;
+  rows.forEach(r => r.payout = Math.min(r.payout, maxAllowed));
+  return { rows, totalCost };
+}
 
-bot.command('newgame', (ctx) => {
-  game = { rows: ROWS.map(r => ({ ...r, owner: null })), called: [], pot: 0 };
-  const board = game.rows.map(r => `Row ${r.id} - ${r.name} - Cost: ${r.cost} - Payout: ${r.payout}`).join('\n');
-  ctx.reply(`New Lucky Lines game started!\n\n${board}\n\nUse /buy <row#> to reserve a row`);
+bot.start((ctx) => ctx.reply('Welcome to DegenFamous Bingo! Use /newgame to start Lucky Lines with player poll for style.'));
+
+bot.command('newgame', async (ctx) => {
+  const poll = await ctx.replyWithPoll(
+    'Vote for the prize range/style for this game!',
+    ['Low Stakes ($15–$25)', 'Medium Stakes ($30–$100)', 'High Stakes ($100–$200)', 'Juiced Special (up to $200)'],
+    { is_anonymous: false, allows_multiple_answers: false }
+  );
+  pollMessage = poll.message_id;
+
+  // Wait 2 minutes for votes
+  setTimeout(async () => {
+    const results = await ctx.telegram.getPollResults(poll.chat.id, poll.message_id);
+    const votes = results.options.map(o => o.voter_count);
+    const maxVotes = Math.max(...votes);
+    const winningIndex = votes.indexOf(maxVotes);
+    const styles = ['low', 'medium', 'high', 'juiced'];
+    const chosenStyle = styles[winningIndex] || 'low'; // default low
+
+    const { rows, totalCost } = generateBoard(chosenStyle);
+    game = { rows, called: [], chosenStyle };
+
+    const boardText = rows.map(r => `Row ${r.id}. $${r.cost} / $${r.payout}`).join('\n');
+    ctx.reply(`Poll ended! Winning style: ${results.options[winningIndex].text}\n\nNew Lucky Lines game started!\nTotal to fill: $${totalCost}\n\n${boardText}\n\nUse /buy <row#> to reserve (pay via forwarded tip)`);
+  }, 120000); // 2 minutes
 });
 
 bot.command('flashboard', (ctx) => {
-  if (!game) return ctx.reply('No game in progress. Use /newgame');
-  const board = game.rows.map(r => `Row ${r.id} (${r.owner || 'Available'}) - ${r.numbers.join(' ')}`).join('\n');
-  ctx.reply(`Lucky Lines Flashboard:\n\n${board}`);
+  if (!game) return ctx.reply('No game in progress.');
+  const board = game.rows.map(r => `Row ${r.id} (${r.owner || 'Available'}) - $${r.cost} / $${r.payout} - Numbers: ${r.numbers?.join(' ') || 'Pending'}`).join('\n');
+  ctx.reply(`Lucky Lines Flashboard (${game.chosenStyle} style):\n\n${board}`);
 });
 
-bot.command('buy', (ctx) => {
-  if (!game) return ctx.reply('No game in progress.');
-  const rowId = parseInt(ctx.message.text.split(' ')[1]);
-  const row = game.rows.find(r => r.id === rowId);
-  if (!row || row.owner) return ctx.reply('Invalid or taken row.');
-  row.owner = ctx.from.username || ctx.from.first_name;
-  ctx.reply(`You reserved Row ${rowId}! Good luck.`);
-});
+// Add /buy logic, number calling, win detection, @cctip recognition as before
 
 bot.launch();
-
-console.log('Bot is running...');
+console.log('Bot is running with player poll for style and auto variations...');
