@@ -1,0 +1,21 @@
+<div id="leaderboard">
+  <h2>Top Degens</h2>
+  <ul id="leaders"></ul>
+</div>
+
+<script>
+// Fetch leaderboard on load
+fetch('https://YOUR_BACKEND/api/leaderboard')
+  .then(r => r.json())
+  .then(data => {
+    const list = document.getElementById('leaders');
+    data.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = `${p.name}: ${p.wins} wins | ${p.xp} XP`;
+      list.appendChild(li);
+    });
+  });
+
+// Referral code display
+document.getElementById('status').textContent += ` | Ref: ${tg.initDataUnsafe.user.id.toString().slice(-6)}`;
+</script>
