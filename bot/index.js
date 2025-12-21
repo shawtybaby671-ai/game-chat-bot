@@ -32,12 +32,25 @@ bot.command('newgame', (ctx) => {
   ctx.reply(`New Lucky Lines game started!\n\n${boardText}\n\nTip ${PAYOUT_WALLET} via CCTip, then forward the success message here to get credited.\nUse /balance to check your tip balance.`);
 });
 
-bot.command('balance', (ctx) => {
-  const user = ctx.from.username || ctx.from.first_name;
-  const bal = balances[user] || 0;
-  ctx.reply(`@${user}, your credited balance: $${bal}\nUse it to /buy rows!`);
-});
+bot.command('newgame', (ctx) => {
+  // Generate varied board (example — replace with your rotation)
+  const payouts = [15, 20, 18, 15, 25, 16, 22, 15, 17, 20, 15, 23, 18, 15, 24];
+  const costs = [1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2];
 
+  game = {
+    rows: payouts.map((payout, i) => ({
+      id: i + 1,
+      cost: costs[i],
+      payout,
+      owner: null,
+      numbers: Array.from({ length: 5 }, () => Math.floor(Math.random() * 75) + 1).sort((a, b) => a - b),
+    })),
+    called: [],
+  };
+
+  const boardText = game.rows.map(r => `Row ${r.id}. $${r.cost} / $${r.payout}`).join('\n');
+  ctx.reply(`New Lucky Lines game started!\n\n${boardText}\n\nTip @bingopays via CCTip, then forward the success message here to reserve a row.`);
+});
 bot.command('flashboard', (ctx) => {
   if (!game) return ctx.reply('No game in progress. Use /newgame');
   const board = game.rows.map(r => `Row ${r.id} (${r.owner || 'Available'}) - $${r.cost} / $${r.payout} - ${r.numbers.join(' ')}`).join('\n');
