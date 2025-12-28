@@ -1,21 +1,274 @@
-<div id="leaderboard">
-  <h2>Top Degens</h2>
-  <ul id="leaders"></ul>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DegenFamous Bingo</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Georgia&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; min-height: 100vh; background: linear-gradient(#F5F5DC, #E8E1D4); color: #4A2C2A; font-family: 'Georgia', serif; display: flex; flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box; }
+    h1 { font-family: 'Playfair Display', serif; color: #8B0000; font-size: 36px; text-shadow: 0 0 10px #D4AF37; margin: 10px; }
+    .brass-panel { background: rgba(255,255,220,0.9); border: 3px double #D4AF37; border-radius: 20px; padding: 20px; margin: 10px; width: 90%; max-width: 500px; box-shadow: 0 0 20px rgba(212,175,55,0.5); }
+    .logo { width: 160px; height: 160px; background: url('logo.png') center/cover; border-radius: 50%; border: 5px solid #D4AF37; box-shadow: 0 0 30px #D4AF37; margin: 20px; }
+    button { background: linear-gradient(to bottom, #D4AF37, #B8860B); color: #4A2C2A; border: none; padding: 15px 30px; margin: 10px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: all 0.2s; }
+    button:active { transform: scale(0.95); }
+    .card-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: #F5F5DC; padding: 15px; border: 4px double #D4AF37; border-radius: 15px; }
+    .cell { background: white; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; border-radius: 8px; position: relative; }
+    .header-cell { background: #8B0000; color: #D4AF37; font-size: 24px; }
+    .free { background: #D4AF37 !important; color: white; }
+    .marked { background: #B8860B; color: white; }
+    .ink-blot { position: absolute; width: 60px; height: 60px; background: radial-gradient(circle, rgba(0,0,0,0.4) 20%, transparent 70%); animation: blot 0.5s ease-out; }
+    @keyframes blot { from { transform: scale(0); opacity: 1; } to { transform: scale(1); opacity: 0.6; } }
+    .glow-near { box-shadow: 0 0 15px #D4AF37; }
+    .confetti { position: fixed; pointer-events: none; }
+    .spinner { border: 4px solid #D4AF37; border-top: 4px solid #8B0000; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="logo"></div>
+  <h1>DegenFamous Bingo</h1>
 
-<script>
-// Fetch leaderboard on load
-fetch('https://YOUR_BACKEND/api/leaderboard')
-  .then(r => r.json())
-  .then(data => {
-    const list = document.getElementById('leaders');
-    data.forEach(p => {
-      const li = document.createElement('li');
-      li.textContent = `${p.name}: ${p.wins} wins | ${p.xp} XP`;
-      list.appendChild(li);
-    });
-  });
+  <div id="dashboard" class="brass-panel">
+    <h2>Welcome back, <span id="playerName">Degen</span>!</h2>
+    <p>Diamonds: <strong id="diamonds">50</strong> 💎</p>
+    <p>XP: <strong id="xp">0</strong> | VIP Level: <strong id="vip">1</strong> (Perks in future promotions!)</p>
+    <p>Affiliate earnings this week: <strong id="affEarnings">0</strong> 💎</p>
+    <p>Your referral link: <span id="refLink">copy me</span></p>
+    <button id="claimFreeBtn">Claim Weekly Free Card</button>
+    <button onclick="showUpcoming()">View Upcoming Games</button>
+    <button onclick="showJoinModal()">Join Current Game</button>
+    <button onclick="backToGroup()">Back to Group Chat</button>
+  </div>
 
-// Referral code display
-document.getElementById('status').textContent += ` | Ref: ${tg.initDataUnsafe.user.id.toString().slice(-6)}`;
-</script>
+  <!-- Continued in Part 2 -->
+</body>
+</html>
+  <div id="joinModal" class="brass-panel" style="display:none;">
+    <h2>Join Game</h2>
+    <p>Current Pattern: <span id="joinPattern">Single Line</span></p>
+    <p>Difficulty: <span id="joinDiff">Easy</span> (Wilds: <span id="joinWilds">0</span>)</p>
+    <label>Mode: 
+      <select id="modeSelect">
+        <option value="free">Freeplay (Full House only)</option>
+        <option value="diamond">Diamond Boost</option>
+      </select>
+    </label>
+    <label id="cardSliderLabel" style="display:none;">Bonus Cards: <span id="cardCount">1</span></label>
+    <input type="range" id="cardSlider" min="1" max="50" value="1" style="display:none;">
+    <p>Cost: <span id="joinCost">0</span> diamonds</p>
+    <button onclick="confirmJoin()">Join</button>
+    <button onclick="closeModal('joinModal')">Cancel</button>
+  </div>
+
+  <div id="puzzleModal" class="brass-panel" style="display:none;">
+    <h2>Skill Challenge to Enter</h2>
+    <p id="puzzleQuestion"></p>
+    <input type="text" id="puzzleAnswer" placeholder="Your answer..." style="width:80%; padding:10px; margin:10px;">
+    <button onclick="submitPuzzle()">Submit</button>
+    <p id="puzzleFeedback" style="color:#8B0000;"></p>
+  </div>
+
+  <div id="gameScreen" style="display:none;">
+    <h2>Game in Progress</h2>
+    <p>Pattern: <span id="gamePattern"></span> | Called: <span id="calledCount">0</span>/75</p>
+    <div id="flashboard" style="display: grid; grid-template-columns: repeat(15, 1fr); gap: 5px; margin:20px;"></div>
+    <div id="cardsContainer"></div>
+    <p>Your best card: <strong id="nearWin">Waiting for calls...</strong></p>
+    <p>Hall tease: <span id="groupTease"></span></p>
+    <button onclick="backToGroup()">Back to Group Chat</button>
+  </div>
+
+  <div id="winModal" class="brass-panel" style="display:none;">
+    <h2>BINGO!</h2>
+    <p>You share the win with <span id="winShares">1</span> players</p>
+    <p>Your prize: <strong id="winPrize">0</strong> diamonds</p>
+    <canvas id="confettiCanvas" width="400" height="600"></canvas>
+    <button onclick="showTipModal()">Tip the Caller (0-50 diamonds)</button>
+    <button onclick="showRedemptionPuzzle()">Redeem Prize</button>
+  </div>
+
+  <div id="tipModal" class="brass-panel" style="display:none;">
+    <h2>Thank the Caller</h2>
+    <label>Tip amount: <input type="range" id="tipSlider" min="0" max="50" value="10"></label>
+    <p><span id="tipAmount">10</span> diamonds</p>
+    <button onclick="submitTip()">Send Tip</button>
+    <button onclick="closeModal('tipModal')">No thanks</button>
+  </div>
+
+  <!-- Part 3: Script in next response -->
+  <script>
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    Telegram.WebApp.enableClosingConfirmation();
+
+    const user = Telegram.WebApp.initDataUnsafe.user || { id: 123, first_name: 'Degen' };
+    const initData = Telegram.WebApp.initData; // Full raw for auth
+    const API_BASE = 'https://your-agent-repl-name.your-username.replit.app/api'; // CHANGE TO YOUR AGENT URL
+
+    document.getElementById('playerName').innerText = user.first_name;
+
+    // Customizable skill questions
+    const skillQuestions = [
+      { question: "What is 7 × 8 - 12?", answer: "44" },
+      { question: "FOMO stands for Fear Of _____ Out?", answer: "Missing" },
+      { question: "Next in B-I-N-G-O sequence after G-60?", answer: "O-75" },
+      // Add more as needed
+    ];
+
+    let gameInterval = null;
+    let currentGame = null;
+
+    // Utility
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    function backToGroup() {
+      Telegram.WebApp.close();
+    }
+
+    async function apiGet(endpoint) {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        headers: { 'auth': initData }
+      });
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    }
+
+    async function apiPost(endpoint, body = {}) {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'auth': initData },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    }
+
+    // Dashboard load
+    async function loadDashboard() {
+      const data = await apiGet('/player');
+      document.getElementById('diamonds').innerText = data.diamonds;
+      document.getElementById('xp').innerText = data.xp;
+      document.getElementById('vip').innerText = data.vip;
+      document.getElementById('affEarnings').innerText = data.affEarnings;
+      document.getElementById('refLink').innerText = `t.me/${(await bot.getMe()).username}?start=ref_${user.id}`;
+      document.getElementById('claimFreeBtn').style.display = data.canClaimFree ? 'block' : 'none';
+    }
+
+    // Join modal
+    async function showJoinModal() {
+      const game = await apiGet('/current_game');
+      document.getElementById('joinPattern').innerText = game.pattern;
+      document.getElementById('joinDiff').innerText = game.difficulty;
+      document.getElementById('joinWilds').innerText = game.wilds;
+      const isDiamond = document.getElementById('modeSelect').value === 'diamond';
+      document.getElementById('cardSliderLabel').style.display = isDiamond ? 'block' : 'none';
+      document.getElementById('cardSlider').style.display = isDiamond ? 'block' : 'none';
+      document.getElementById('joinCost').innerText = isDiamond ? game.costPerCard * document.getElementById('cardSlider').value : 0;
+      document.getElementById('joinModal').style.display = 'block';
+    }
+
+    document.getElementById('cardSlider').oninput = () => {
+      const count = document.getElementById('cardSlider').value;
+      document.getElementById('cardCount').innerText = count;
+      // Update cost
+    };
+
+    async function confirmJoin() {
+      const mode = document.getElementById('modeSelect').value;
+      const cards = mode === 'diamond' ? parseInt(document.getElementById('cardSlider').value) : 1;
+      if (mode === 'diamond') showPuzzle();
+      else await apiPost('/join_game', { mode, cards });
+      closeModal('joinModal');
+      startGameView();
+    }
+
+    // Puzzle
+    function showPuzzle() {
+      const q = skillQuestions[Math.floor(Math.random() * skillQuestions.length)];
+      document.getElementById('puzzleQuestion').innerText = q.question;
+      document.getElementById('puzzleModal').style.display = 'block';
+      currentPuzzle = q;
+    }
+
+    async function submitPuzzle() {
+      const answer = document.getElementById('puzzleAnswer').value.trim();
+      if (answer.toLowerCase() === currentPuzzle.answer.toLowerCase()) {
+        await apiPost('/puzzle_submit', { correct: true });
+        document.getElementById('puzzleFeedback').innerText = 'Correct! Joining...';
+        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        setTimeout(() => {
+          closeModal('puzzleModal');
+          startGameView();
+        }, 1500);
+      } else {
+        document.getElementById('puzzleFeedback').innerText = 'Wrong – try again (diamonds safe)';
+        Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+      }
+    }
+
+    // Game View
+    async function startGameView() {
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('gameScreen').style.display = 'block';
+      renderCards();
+      gameInterval = setInterval(pollGameState, 3000);
+      pollGameState();
+    }
+
+    async function pollGameState() {
+      const state = await apiGet('/game_state');
+      document.getElementById('gamePattern').innerText = state.pattern;
+      document.getElementById('calledCount').innerText = state.called.length;
+      document.getElementById('nearWin').innerText = state.personalAway;
+      document.getElementById('groupTease').innerText = state.groupTease || 'Quiet hall...';
+      updateDaub(state.called);
+      if (state.win) showWin(state.win);
+    }
+
+    function renderCards() {
+      // Full card rendering logic from server data – placeholder for multiple cards
+      const container = document.getElementById('cardsContainer');
+      container.innerHTML = '<div class="card-grid"><div class="header-cell">B</div><div class="header-cell">I</div><!-- etc --></div>';
+    }
+
+    function updateDaub(called) {
+      // Auto-ink blot on new calls + glow
+      called.forEach(num => {
+        // Find cells, add .marked + ink div
+      });
+    }
+
+    function showWin(winData) {
+      clearInterval(gameInterval);
+      document.getElementById('winShares').innerText = winData.shares;
+      document.getElementById('winPrize').innerText = winData.prize;
+      document.getElementById('gameScreen').style.display = 'none';
+      document.getElementById('winModal').style.display = 'block';
+      startConfetti();
+    }
+
+    function showTipModal() {
+      document.getElementById('tipSlider').oninput = () => document.getElementById('tipAmount').innerText = document.getElementById('tipSlider').value;
+      document.getElementById('tipModal').style.display = 'block';
+    }
+
+    async function submitTip() {
+      const amount = parseInt(document.getElementById('tipSlider').value);
+      await apiPost('/tip_caller', { amount });
+      closeModal('tipModal');
+      Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    }
+
+    // Confetti placeholder
+    function startConfetti() {
+      // Canvas gold confetti animation
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
